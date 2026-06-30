@@ -197,4 +197,127 @@ class Core(object):
             lattice.setPosition(pos, self.assem.u_fuel[enr][ba][instr])
         lattice.finalize()
 
+        if 1==1:
+            # Introduce temperature field
+            DLT_map = self._define_temperature()
+            DLT_map_in_K = DLT_map * 5/9 + 566.5
+            print(f"Max = {DLT_map_in_K.max():.0f} K, Min = {DLT_map_in_K.min():.0f} K")
+            assert DLT_map_in_K.max() < 613, "DLT temperature larger than boiling point!"
+            lattice.assign_DLT_via_cells(DLT_map_in_K)
+            plot_map(DLT_map, mask=fuel_mask, dgt=1, fontsize=7, cbar_set=0.0, title="BEAVRS temperatures (°F)", filename="DLT_map.png", save_flag=True)
+
+        if 1==0:
+            # Introduce displacement field
+            displacement_map = self._define_displacement()
+            lattice.displace(displacement_map, self.mats)
+            plot_displacement(displacement_map, save_flag=True)
+
         self.u_coreLattice = lattice
+    
+
+    def _define_temperature(self):
+        # Temperature map (in Fahrenheit)
+        T_bkg = 566.5
+        T_bkg = 0
+        DLT_map = np.zeros((15,15)) + T_bkg
+        DLT_map[7,7] = T_bkg + 10
+        
+        # DLT_map = np.loadtxt("DLT (LSQ cap 10 F).txt")
+        # DLT_map = np.loadtxt("DLT-LSQ-cap-10-TV-3 with bias.txt")
+        # DLT_map = np.loadtxt("DLT-BF-02-old.txt")
+        # DLT_map = np.loadtxt("BF-01-T1-Z-RAND-NO.txt")
+        DLT_map = np.loadtxt("DLT_0.txt")
+        
+        DLT_map[fuel_mask==1] = DLT_map[fuel_mask==1] - DLT_map[fuel_mask==1].mean()
+        np.savetxt(f"DLT.txt", DLT_map, fmt="%+06.2f", delimiter=" ")
+        
+        return DLT_map
+
+    def _define_displacement(self):
+        # Displacement field (in cm)
+        displacement_map = [[(0.0, 0.0) for _ in range(15)] for _ in range(15)]
+
+        # Best LDS from optimization
+        displacement_map = [
+            [(+.00, +.00), (+.00, +.00), (+.00, +.00), (+.00, +.00), (+.215, +.00), (+.215, +.215), (+.215, +.215), (-.215, -.215), (-.215, -.215), (-.215, +.00), (+.00, +.00), (+.00, +.00), (+.00, +.00), (+.00, +.00), (+.00, +.00)],
+            [(+.00, +.00), (+.00, +.00), (+.215, +.215), (-.215, +.215), (+.00, +.00), (+.00, +.215), (+.00, -.215), (+.00, +.215), (+.00, +.00), (+.215, +.215), (+.215, +.215), (-.215, +.215), (+.00, -.215), (+.00, +.00), (+.00, +.00)],
+            [(+.00, +.00), (-.215, +.215), (+.00, +.00), (+.00, +.00), (-.215, +.215), (+.215, +.215), (+.00, +.215), (+.00, +.00), (+.215, -.215), (+.00, +.00), (+.00, -.215), (+.215, -.215), (-.215, +.215), (+.215, +.215), (+.00, +.00)],
+            [(+.00, +.00), (+.215, +.00), (+.00, +.00), (-.215, +.215), (+.00, -.215), (+.00, +.00), (+.215, +.00), (+.215, +.00), (+.215, +.00), (+.00, +.00), (+.00, +.00), (+.00, +.215), (+.215, -.215), (+.00, +.00), (+.00, +.00)],
+            [(-.215, -.215), (+.00, +.00), (-.215, -.215), (+.00, +.00), (+.215, +.00), (+.215, -.215), (+.00, +.00), (+.00, +.00), (-.215, +.00), (+.00, +.00), (-.215, +.215), (-.215, +.00), (-.215, +.00), (+.00, +.00), (-.215, +.215)],
+            [(-.215, +.215), (+.215, +.00), (+.00, +.00), (+.00, +.00), (+.215, -.215), (+.215, -.215), (+.00, +.00), (-.215, +.215), (+.00, +.215), (+.00, +.00), (+.00, +.215), (+.00, +.00), (+.00, +.00), (+.00, -.215), (+.215, +.00)],
+            [(-.215, -.215), (-.215, -.215), (+.215, +.00), (+.00, +.00), (+.00, -.215), (+.215, +.215), (-.215, +.215), (+.00, +.00), (-.215, +.00), (+.215, -.215), (+.215, -.215), (+.215, +.215), (+.215, -.215), (-.215, +.00), (+.215, +.00)],
+            [(+.00, -.215), (+.215, +.00), (+.215, -.215), (+.215, -.215), (+.215, -.215), (+.215, +.00), (-.215, +.215), (+.215, +.215), (+.215, +.215), (+.215, -.215), (-.215, +.00), (+.00, +.00), (+.215, -.215), (+.00, +.00), (-.215, +.00)],
+            [(-.215, -.215), (-.215, -.215), (+.215, +.00), (+.00, +.215), (+.215, -.215), (-.215, +.00), (+.00, +.00), (+.215, -.215), (+.00, +.00), (+.00, +.00), (+.215, +.00), (+.00, -.215), (+.00, -.215), (+.215, -.215), (+.00, -.215)],
+            [(+.00, +.00), (+.00, +.215), (-.215, -.215), (-.215, +.00), (+.00, +.00), (+.215, -.215), (+.00, +.00), (+.00, +.00), (+.00, +.00), (+.215, +.00), (+.215, -.215), (+.215, -.215), (-.215, -.215), (-.215, -.215), (+.00, +.00)],
+            [(-.215, +.00), (+.00, +.215), (-.215, -.215), (+.215, -.215), (+.00, -.215), (+.00, +.00), (-.215, -.215), (-.215, +.215), (+.215, -.215), (+.00, +.00), (+.215, +.00), (+.215, +.215), (+.00, -.215), (+.00, +.00), (+.215, -.215)],
+            [(+.00, +.00), (+.00, +.00), (+.215, +.215), (+.00, +.00), (+.215, +.215), (+.215, +.00), (-.215, -.215), (+.215, +.215), (+.00, +.00), (+.215, -.215), (-.215, -.215), (+.215, -.215), (+.00, +.00), (+.215, +.00), (+.00, +.00)],
+            [(+.00, +.00), (-.215, +.00), (+.00, +.00), (+.00, +.00), (+.00, +.00), (-.215, +.215), (+.00, +.00), (+.00, +.00), (+.00, +.00), (+.00, -.215), (+.215, -.215), (+.00, +.00), (-.215, +.215), (+.00, -.215), (+.00, +.00)],
+            [(+.00, +.00), (+.00, +.00), (+.00, -.215), (+.00, -.215), (-.215, +.215), (+.215, +.00), (+.00, +.215), (+.00, +.00), (+.215, +.00), (+.215, +.00), (+.00, +.00), (-.215, +.00), (+.215, -.215), (+.00, +.00), (+.00, +.00)],
+            [(+.00, +.00), (+.00, +.00), (+.00, +.00), (+.00, +.00), (-.215, -.215), (+.215, +.00), (+.215, +.00), (+.00, +.215), (+.00, +.00), (+.215, +.215), (+.215, +.215), (+.00, +.00), (+.00, +.00), (+.00, +.00), (+.00, +.00)],
+            ]
+
+        # for row in displacement_map:
+        #     print(row)
+
+        # Maximum allowed displacement in x or y
+        dMax = (c.latticePitch - 2*c.cladOR - c.pinPitch*(17-1)) / 2
+
+        # Check that displacement is within limits
+        for ii, row in enumerate(displacement_map):
+            for jj, (dx, dy) in enumerate(row):
+                if abs(dx) > dMax or abs(dy) > dMax:
+                    raise ValueError(
+                        f"ERROR: Displacement too large at position ({ii},{jj}): "
+                        f"dx = {dx}, dy = {dy}, dMax = {dMax:.4} (cm)"
+                    )
+        
+        return displacement_map
+
+
+    # def _make_core_universe_new(self):
+    #     """ Creates the BEAVRS core lattice universe """
+
+    #     lattice = TemplatedLattice(name='Core Lattice')
+    #     lattice.setTemplate(self.core_lattice_template)
+    #     lattice.pitch = [c.latticePitch, c.latticePitch]
+    #     lattice.lower_left = [-19.*c.latticePitch/2., -19.*c.latticePitch/2.]
+
+    #     print("Core.__dict__:")
+    #     for attr in self.__dict__:
+    #         print(attr)
+    #     print("\n\n")
+
+    #     lattice.updatePositions(self.baffle.universes) ### CHANGE
+    #     lattice.setPosition('dummy', self.pins.u_waterPin) ### CHANGE
+        
+    #     conta = 0
+    #     for pos, temp in zip(self.core_positions, self.DLT_map.ravel()):
+    #         conta += 1
+    #         enr = self.enr_positions[pos]
+    #         if pos in self.ba_positions:
+    #             ba = self.ba_positions[pos]
+    #         elif pos in self.rcca_positions:
+    #             ba = "RCCA {0}".format(self.rcca_positions[pos])
+    #         else:
+    #             ba = 'no BAs'
+    #         if self.is_symmetric:
+    #             instr = 'no instr'
+    #         else:
+    #             if pos in self.instr_positions:
+    #                 instr = 'instr'
+    #             else:
+    #                 instr = 'no instr'
+
+    #         print(f"pos: {pos}, temp: {temp}, ba: {ba}, instr: {instr}")
+    #         print(f"type = {type(self.assem.u_fuel[enr][ba][instr])}")
+
+    #         # function(temp, enr, ba, instr) => beavrs.corebuilder.InfinitePinCell
+    #         # Create a new assemblies given pincells and materials
+    #         assem = Assemblies(self.pincells, self.mats)
+            
+    #         lattice.positions[pos] = self.assem.u_fuel[enr][ba][instr]
+            
+    #         # lattice.setPosition(pos, self.assem.u_fuel[enr][ba][instr])
+
+    #     lattice.finalize()
+    #     self.u_coreLattice = lattice
