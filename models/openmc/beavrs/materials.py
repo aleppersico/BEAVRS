@@ -27,6 +27,7 @@ def openmc_materials(ppm):
 ##############################################
 # Create materials that use natural abundances
 ##############################################
+
     # Create air material
     mats['Air'] = openmc.Material(name='Air')
     mats['Air'].set_density('g/cc', 0.000616)
@@ -179,9 +180,8 @@ def openmc_materials(ppm):
 
 ########## Borated Water #################
 
-    # Density of clean water at 2250 psia T=560F NIST
-    h2o_dens = 0.73986
-    mats['Borated Water'] = openmc.model.borated_water(ppm, density=h2o_dens, name='Borated Water')
+    # Create borated water
+    mats['Borated Water'] = openmc.model.borated_water(boron_ppm=ppm, temperature=c.operating_temperature, pressure=c.operating_pressure, name='Borated Water')
 
 ########## Nozzle / Support Plate Borated Materials #################
 
@@ -212,6 +212,23 @@ def openmc_materials(ppm):
     mats['SS304 SPN'].add_element('Mn', 0.0200, 'wo')
     mats['SS304 SPN'].add_element('Fe', 0.6840, 'wo')
     mats['SS304 SPN'].add_element('Ni', 0.1000, 'wo')
+
+########## Traces of U-235 (detectors)  #################
+
+    # Air-U235 (for RR1)
+    mats['Air-U235'] = openmc.Material(name='Air-U235')
+    mats['Air-U235'].set_density('g/cc', 0.000616)
+    mats['Air-U235'].add_element('O', 0.2095, 'ao')
+    mats['Air-U235'].add_element('N', 0.7809, 'ao')
+    mats['Air-U235'].add_element('Ar', 0.00933, 'ao')
+    mats['Air-U235'].add_element('C', 0.00027, 'ao')
+    mats['Air-U235'].add_nuclide('U235', 1e-12, 'ao')
+
+    # Borated water-U235 (for RR1)
+    # mats['Borated Water-U235'] = openmc.model.borated_water(ppm, density=c.h2oDens, name='Borated Water-U235')
+    mats['Borated Water-U235'] = openmc.model.borated_water(boron_ppm=ppm, temperature=c.operating_temperature, pressure=c.operating_pressure, name='Borated Water-U235')
+    mats['Borated Water-U235'].add_nuclide('U235', 1e-12, 'ao')
+
 
     # Set material temperatures based on isothermal conditions
     for mat in mats.values():

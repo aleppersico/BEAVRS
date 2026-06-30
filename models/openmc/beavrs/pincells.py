@@ -52,8 +52,8 @@ class Pincells(object):
     def _add_dummy_universe(self):
         """ Adds all-water universe for empty lattice positions"""
 
-        self.u_waterPin = openmc.Universe(name='Dummy Water Universe')
         self.c_water = openmc.Cell(name='Water', fill=self.mats['Borated Water'])
+        self.u_waterPin = openmc.Universe(name='Dummy Water Universe')
         self.u_waterPin.add_cells([self.c_water])
 
     def _add_grid_pincells(self):
@@ -106,7 +106,7 @@ class Pincells(object):
         self.u_grid_sleeve_i.finalize()
 
         self.u_grid_sleeve_tb = InfinitePinCell(name='Top/Bottom grid sleeve pincell')
-        self.u_grid_sleeve_tb.add_ring(     self.mats['Inconel 718'], -grid_surfs_ass, box=True)
+        self.u_grid_sleeve_tb.add_ring(self.mats['Inconel 718'], -grid_surfs_ass, box=True)
         self.u_grid_sleeve_tb.add_last_ring(self.mats['Borated Water'])
         self.u_grid_sleeve_tb.finalize()
 
@@ -220,6 +220,10 @@ class Pincells(object):
     def _add_guide_tube_pincells(self):
         """ Adds BEAVRS guide tube pincells """
 
+        # Fission detector (RR1) surfaces
+
+        self.s_detector_IR = openmc.ZCylinder(name='Instrument tube thimble IR', r=c.instrTubeIR) # Alessandro Persico
+
         # GT radial surfaces
 
         self.s_gt_IR = openmc.ZCylinder(name='Guide tube IR', r=c.guideTubeIR)
@@ -236,70 +240,84 @@ class Pincells(object):
 
         # GT pincell universes
 
-        self.u_gt_dashpot = InfinitePinCell(name='Empty GT below the dashpot')
-        self.u_gt_dashpot.add_ring(self.mats['Borated Water'], self.s_gt_dashpot_IR)
-        self.u_gt_dashpot.add_ring(self.mats['Zircaloy 4'], self.s_gt_dashpot_OR)
-        self.u_gt_dashpot.add_last_ring(self.mats['Borated Water'])
-        self.u_gt_dashpot.finalize()
+        self.u_gt_dashpot_p = InfinitePinCell(name='Empty GT below the dashpot')
+        self.u_gt_dashpot_p.add_ring(self.mats['Borated Water'], self.s_gt_dashpot_IR)
+        self.u_gt_dashpot_p.add_ring(self.mats['Zircaloy 4'], self.s_gt_dashpot_OR)
+        self.u_gt_dashpot_p.add_last_ring(self.mats['Borated Water'])
+        self.u_gt_dashpot_p.finalize()
 
         self.u_gt_nodashpot_p = InfinitePinCell(name='Empty GT above the dashpot')
         self.u_gt_nodashpot_p.add_ring(self.mats['Borated Water'], self.s_gt_IR)
         self.u_gt_nodashpot_p.add_last_ring(self.mats['Zircaloy 4'])
         self.u_gt_nodashpot_p.finalize()
 
+        self.u_gt_center_p = InfinitePinCell(name='Empty GT with U235 traces (no dashpot)') # New
+        self.u_gt_center_p.add_ring(self.mats['Borated Water-U235'], self.s_detector_IR)    # New
+        self.u_gt_center_p.add_ring(self.mats['Borated Water'], self.s_gt_IR)               # New
+        self.u_gt_center_p.add_last_ring(self.mats['Zircaloy 4'])                           # New
+        self.u_gt_center_p.finalize()                                                       # New
+
         # GT axial stack
 
-        self.u_gt = AxialPinCell(name='Empty Guide Tube')
-        self.u_gt.add_axial_section(self.s_struct_supportPlate_bot, self.mats['Borated Water'])
-        self.u_gt.add_axial_section(self.s_gt_rod_bot, self.mats['Water SPN'])
-        self.u_gt.add_axial_section(self.s_gt_dashpot_top, self.u_gt_dashpot)
-        self.u_gt.add_axial_section(self.s_gt_rod_top, self.u_gt_nodashpot_p)
-        self.u_gt.add_axial_section(self.s_struct_upperNozzle_top, self.mats['Water SPN'])
+        self.u_gt = AxialPinCell(name='Empty Guide Tube')                                           # GT in non-central position in a fuel assembly
+        self.u_gt.add_axial_section(self.s_struct_supportPlate_bot, self.mats['Borated Water'])     # 20 cm
+        self.u_gt.add_axial_section(self.s_gt_rod_bot, self.mats['Water SPN'])                      # 35 cm
+        self.u_gt.add_axial_section(self.s_gt_dashpot_top, self.u_gt_dashpot_p)                     # 39.9580 cm
+        self.u_gt.add_axial_section(self.s_gt_rod_top, self.u_gt_nodashpot_p)                       # 423.049 cm
+        self.u_gt.add_axial_section(self.s_struct_upperNozzle_top, self.mats['Water SPN'])          # 431.876 cm
         self.u_gt.add_last_axial_section(self.mats['Borated Water'])
         self.u_gt = self.u_gt.add_wrapper(self.u_grids, self.s_gt_OR)
         self.u_gt.finalize()
 
-        self.u_gt_nodashpot = AxialPinCell(name='Empty Guide Tube in Center Position')
-        self.u_gt_nodashpot.add_axial_section(self.s_struct_supportPlate_bot, self.mats['Borated Water'])
-        self.u_gt_nodashpot.add_axial_section(self.s_gt_rod_bot, self.mats['Water SPN'])
-        self.u_gt_nodashpot.add_axial_section(self.s_gt_rod_top, self.u_gt_nodashpot_p)
-        self.u_gt_nodashpot.add_axial_section(self.s_struct_upperNozzle_top, self.mats['Water SPN'])
+        self.u_gt_nodashpot = AxialPinCell(name='Empty Guide Tube in Center Position')                      # GT in central position in a fuel assembly (ofc without IT)
+        self.u_gt_nodashpot.add_axial_section(self.s_struct_supportPlate_bot, self.mats['Borated Water'])   # 20 cm
+        self.u_gt_nodashpot.add_axial_section(self.s_gt_rod_bot, self.mats['Water SPN'])                    # 35 cm
+        self.u_gt_nodashpot.add_axial_section(self.s_gt_rod_top, self.u_gt_center_p)                        # 423.049 cm (changed to u_gt_center_p)
+        self.u_gt_nodashpot.add_axial_section(self.s_struct_upperNozzle_top, self.mats['Water SPN'])        # 431.876 cm
         self.u_gt_nodashpot.add_last_axial_section(self.mats['Borated Water'])
         self.u_gt_nodashpot = self.u_gt_nodashpot.add_wrapper(self.u_grids, self.s_gt_OR)
         self.u_gt_nodashpot.finalize()
+        
+        self.u_gt_center = AxialPinCell(name='Empty Guide Tube in Center Position with U235 traces')     # New -- GT in central position in a fuel assembly (ofc without IT)
+        self.u_gt_center.add_axial_section(self.s_struct_supportPlate_bot, self.mats['Borated Water'])   # New -- 20 cm
+        self.u_gt_center.add_axial_section(self.s_gt_rod_bot, self.mats['Water SPN'])                    # New -- 35 cm
+        self.u_gt_center.add_axial_section(self.s_gt_rod_top, self.u_gt_center_p)                        # New -- 423.049 cm
+        self.u_gt_center.add_axial_section(self.s_struct_upperNozzle_top, self.mats['Water SPN'])        # New -- 431.876 cm
+        self.u_gt_center.add_last_axial_section(self.mats['Borated Water'])                              # New
+        self.u_gt_center = self.u_gt_center.add_wrapper(self.u_grids, self.s_gt_OR)                      # New
+        self.u_gt_center.finalize()                                                                      # New
 
     def _add_instrument_tube_pincells(self):
         """ Adds BEAVRS instrument tube pincells to self object """
 
         # IT radial surfaces
-
         self.s_it_IR = openmc.ZCylinder(name='Instrument tube thimble IR', r=c.instrTubeIR)
         self.s_it_OR = openmc.ZCylinder(name='Instrument tube thimble OR', r=c.instrTubeOR)
 
         # IT pincell universe
         self.u_it_p = InfinitePinCell(name='Instrument tube thimble')
-        self.u_it_p.add_ring(self.mats['Air TH'], self.s_it_IR)
+        self.u_it_p.add_ring(self.mats['Air-U235'], self.s_it_IR)                                       # Changed to Air-U235
         self.u_it_p.add_last_ring(self.mats['Zircaloy 4'])
         self.u_it_p.finalize()
 
         # IT pincell in support plane
         self.u_it_p_spn = InfinitePinCell(name='Instrument tube thimble support plane')
-        self.u_it_p_spn.add_ring(self.mats['Air'], self.s_it_IR)
+        self.u_it_p_spn.add_ring(self.mats['Air-U235'], self.s_it_IR)                                   # Changed to Air-U235
         self.u_it_p_spn.add_last_ring(self.mats['Zircaloy 4'])
         self.u_it_p_spn.finalize()
 
-        # IT axial stack
+        # IT axial stack (58 out of 193 fuel assemblies)
         self.u_it = AxialPinCell(name='Instrument tube axial stack')
-        self.u_it.add_axial_section(self.s_struct_supportPlate_bot, self.u_it_p)
-        self.u_it.add_axial_section(self.s_fuel_rod_bot, self.u_it_p_spn)
-        self.u_it.add_axial_section(self.s_struct_upperNozzle_bot, self.u_it_p)
-        self.u_it.add_axial_section(self.s_struct_upperNozzle_top, self.mats['Water SPN'])
+        self.u_it.add_axial_section(self.s_struct_supportPlate_bot, self.u_it_p)                    # 20 cm
+        self.u_it.add_axial_section(self.s_fuel_rod_bot, self.u_it_p_spn)                           # 35 cm
+        self.u_it.add_axial_section(self.s_struct_upperNozzle_bot, self.u_it_p)                     # 423.049 cm
+        self.u_it.add_axial_section(self.s_struct_upperNozzle_top, self.mats['Water SPN'])          # 431.876 cm
         self.u_it.add_last_axial_section(self.mats['Borated Water'])
         self.u_it = self.u_it.add_wrapper(self.u_gt_nodashpot, self.s_it_OR)
         self.u_it.finalize()
 
-        # IT axial stack - empty
-        self.u_it_nt = self.u_gt_nodashpot
+        # IT axial stack (135 out of 193 fuel assemblies, central GT without IT) -- this is used in assemblies.py, not u_gt_center
+        self.u_it_nt = self.u_gt_center
 
     def _add_bpra_pincells(self):
         """ Adds BEAVRS BPRA pincells """

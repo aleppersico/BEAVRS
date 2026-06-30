@@ -3,9 +3,10 @@ import math
 
 ############## Material paramters ##############
 
-h2oDens = 0.73986
-nominalBoronPPM = 975
-operating_temperature = 566.483 # 560 degrees Farenheit to Kelvin
+h2oDens = 0.73986                   # Density of clean water at 2250 psia T=560F NIST
+nominalBoronPPM = 975               # Concentration of boron in ppm <-------- set back to 975 ppm
+operating_temperature = 566.5       # Operating temperature in Kelvin (560 degrees Farenheit)
+operating_pressure = 155.13 / 10    # Operating pressure in MPa (2250 psia)
 
 ############## Geometry paramters ##############
 

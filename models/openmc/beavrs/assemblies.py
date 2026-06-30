@@ -54,7 +54,7 @@ class Assemblies(object):
 
 
     def _add_assembly_surfs(self):
-        """ Adds BEAVRS assebly surfaces - these include the assembly pitch"""
+        """ Adds BEAVRS assembly surfaces - these include the assembly pitch"""
 
         # Rectangular prism around the edge of the pinlattice
         self.assem_surfs = \

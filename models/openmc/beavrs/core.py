@@ -6,6 +6,11 @@ Provides a container class for BEAVRS core lattice
 
 import beavrs.constants as c
 from beavrs.corebuilder import TemplatedLattice
+import numpy as np
+
+import beavrs_inference as bi
+from beavrs_inference.constants import fuel_mask, M_id
+from beavrs_inference.plot import plot_map, plot_displacement
 
 class Core(object):
 
@@ -181,9 +186,9 @@ class Core(object):
                 ba = 'no BAs'
             if self.is_symmetric:
                 if not self.instrument_per_assembly:
-                  instr = 'no instr'
+                    instr = 'no instr'
                 else:
-                  instr = 'instr'
+                    instr = 'instr'
             else:
                 if pos in self.instr_positions:
                     instr = 'instr'
@@ -193,4 +198,3 @@ class Core(object):
         lattice.finalize()
 
         self.u_coreLattice = lattice
-

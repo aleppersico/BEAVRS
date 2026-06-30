@@ -48,6 +48,103 @@ class TemplatedLattice(openmc.RectLattice):
             universes.append(r)
         self.universes = universes
 
+    def displace(self, map, mats):
+        """ Displace the assemblies of the core based on an input map"""
+
+        # Define the outer universe (to fill gaps left by translations)
+        outer_universe = openmc.Universe()
+        outer_universe.add_cell(openmc.Cell(fill=mats['Borated Water']))
+
+        # Loop over the displacement map
+        for ii in range(len(map)):
+            for jj in range(len(map[ii])):
+                dx, dy = map[ii][jj]
+
+                # Only apply displacement if it's non-zero
+                if (dx, dy) != (0.0, 0.0):
+                    # Wrap the existing universe into a cell and apply translation
+                    translated_cell = openmc.Cell(fill=self.universes[ii+2][jj+2])
+                    translated_cell.translation = (dx, dy, 0.0)
+
+                    # Create a new universe holding the translated cell
+                    translated_univ = openmc.Universe(cells=[translated_cell])
+
+                    # Replace the original universe in the core lattice
+                    self.universes[ii+2][jj+2] = translated_univ
+
+        # Set the outer universe
+        self.outer = outer_universe
+    
+    def assign_DLT_via_cells(self, DLT_map):
+        """ Assign a temperature map (in Kelvin) to the core assemblies by acting on the cells
+            Water density is NOT modified!!!
+        """
+
+        # Loop over the DLT map
+        for ii in range(DLT_map.shape[0]):
+            for jj in range(len(DLT_map[ii])):
+        # for ii, jj in zip([7,8,9,10],[7,8,9,10]):
+        # for ii, jj in zip([7],[7]):
+        #     if 1==1:
+                
+                # idx_assembly = M_id[ii,jj]
+                idx_assembly = ii * DLT_map.shape[0] + jj + 1
+                DLT_K = DLT_map[ii][jj]
+                
+                print(f"\nAssembly {idx_assembly} in position: {ii,jj} => temp {DLT_K}")
+
+                # Get the original assembly universe
+                template_univ = self.universes[ii+2][jj+2]
+                new_universe = template_univ.clone(clone_materials=False)
+
+                # print(f"No. of materials = {len(template_univ.get_all_materials())}")
+                # print(f"No. of cells = {len(template_univ.get_all_cells())}")
+                # print("#"*20)
+                # print(template_univ.get_all_materials())
+                # print("#"*20)
+                # print(template_univ.get_all_cells())
+                # print(type(template_univ))
+
+                for cell in new_universe.get_all_cells().values():
+                    cell.temperature = DLT_K
+                    # if "water" in cell.name.lower():
+                    #     print(f"    Cell.name = {cell.name}")
+                    #     print(f"    Cell = {cell}")
+                    # print(f"    Assembly {M_ass[ii,jj]} in position: {ii,jj} => temp {DLT_K}, density {cell.get_density()}")
+
+                # Insert back into the core
+                self.universes[ii+2][jj+2] = new_universe
+    
+    def assign_DLT_via_mat(self, DLT_map):
+        """ Assign a temperature map (in Kelvin) to the core assemblies by acting on the cells
+            Also the density is modified
+        """
+        pressure_MPa = 15.51324  # 2250 psia
+
+        # Loop over the DLT map
+        for ii in range(DLT_map.shape[0]):
+            for jj in range(len(DLT_map[ii])):
+                DLT_K = DLT_map[ii][jj]
+                # print(f"\nAssembly {M_ass[ii,jj]} in position: {ii,jj} => temp {DLT_K}")
+
+                # Clone assembly with its own material objects so each assembly can have an independent moderator density.
+                template_univ = self.universes[ii+2][jj+2]
+                new_universe = template_univ.clone(clone_materials=True)
+
+                for mat in new_universe.get_all_materials().values():
+                    if mat.name is None:
+                        continue
+
+                    mat_name = mat.name.lower()
+                    if "water" in mat_name:
+                        rho = openmc.data.water_density(DLT_K, pressure_MPa)
+                        mat.temperature = DLT_K
+                        mat.set_density('g/cc', rho)
+                        print(f"    Material {mat.name}: rho={rho:.6f} g/cc")
+
+                # Insert back into the core
+                self.universes[ii+2][jj+2] = new_universe
+
 
 _created_cells = {}
 
